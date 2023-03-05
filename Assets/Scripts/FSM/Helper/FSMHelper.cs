@@ -14,13 +14,11 @@ namespace FSM
         /// </summary>
         public class StateUpdateModule
         {
-            public StateName stateName;
             public object[] stateParameters;
             public Action<object[]> stateUpdateEvent;
 
-            public StateUpdateModule(StateName stateName,object[] stateParameters,Action<object[]> stateUpdateEvent)
+            public StateUpdateModule(object[] stateParameters,Action<object[]> stateUpdateEvent)
             {
-                this.stateName = stateName;
                 this.stateParameters = stateParameters;
                 this.stateUpdateEvent = stateUpdateEvent;
             }
@@ -39,18 +37,13 @@ namespace FSM
         /// <returns></returns>
         private Dictionary<StateName,StateUpdateModule> StateUpdateModuleDict = new Dictionary<StateName,StateUpdateModule>();
 
-
+        private StateUpdateModule[] stateUpdateArray;
         public static FSMHelper Instance{private set;get;}
 
         private void Awake()
         {
-            GameObject fsmHelper = GameObject.FindGameObjectWithTag(StaticGameTag.FSMHelperTag);
-            if(fsmHelper == null)
-            {
-                fsmHelper = new GameObject(StaticGameTag.FSMHelperTag);
-                fsmHelper.tag = StaticGameTag.FSMHelperTag;
-            }
-            Instance = fsmHelper.AddComponent<FSMHelper>();
+            if(Instance == null)
+                Instance = this;
         }
         private IEnumerator Start()
         {
@@ -66,11 +59,10 @@ namespace FSM
                     yield return new WaitForSeconds(invokeInterval);
                 }
                 ///更新其中的事件
-                foreach(StateUpdateModule state in StateUpdateModuleDict.Values)
+                for(int i=0;i<stateUpdateArray.Length;i++)
                 {
-                    state.stateUpdateEvent?.Invoke(state.stateParameters);
+                    stateUpdateArray[i].stateUpdateEvent?.Invoke(stateUpdateArray[i].stateParameters);
                 }
-
 
             }
         }
@@ -84,12 +76,13 @@ namespace FSM
         {
             if(!StateUpdateModuleDict.ContainsKey(stateName))
             {
-                StateUpdateModuleDict.Add(stateName,new StateUpdateModule(stateName,stateUpdateParameters,stateUpdateEvent));
+                StateUpdateModuleDict.Add(stateName,new StateUpdateModule(stateUpdateParameters,stateUpdateEvent));
             }
             else
             {
-                StateUpdateModuleDict[stateName] = new StateUpdateModule(stateName,stateUpdateParameters,stateUpdateEvent);
+                StateUpdateModuleDict[stateName] = new StateUpdateModule(stateUpdateParameters,stateUpdateEvent);
             }
+            CopyStateInArray();
         }
         /// <summary>
         /// 移除状态更新事件
@@ -100,7 +93,21 @@ namespace FSM
             if(StateUpdateModuleDict.ContainsKey(stateName))
             {
                 StateUpdateModuleDict.Remove(stateName);
+                CopyStateInArray();
             }
         }
+
+
+        public void CopyStateInArray()
+        {
+            stateUpdateArray = new StateUpdateModule[StateUpdateModuleDict.Count];
+            int i = 0;
+            foreach(var state in StateUpdateModuleDict)
+            {
+                stateUpdateArray[i] = state.Value;
+                i++;
+            }
+        }
+
     }
 }

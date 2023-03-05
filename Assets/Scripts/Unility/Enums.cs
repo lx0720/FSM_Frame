@@ -4,5 +4,6 @@ using UnityEngine;
 
 public enum StateName
 {
-    Idling,Walking,Runing
+    None,Idling,
+    Movement,Walking,Runing
 }

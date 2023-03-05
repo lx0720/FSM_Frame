@@ -9,13 +9,20 @@ namespace FSM
     /// </summary>
     public class State
     {
-        #region  Fields
-
         /// <summary>
         /// 状态的名字
         /// </summary>
         private StateName stateName;
+        /// <summary>
+        /// 状态是否运行
+        /// </summary>
+        protected bool stateRunning = false;
+        /// <summary>
+        /// 可以转换的状态和转换条件
+        /// </summary>
+        private Dictionary<StateName,Func<bool>> transitionStateDict;
 
+         #region State Events
         /// <summary>
         /// 状态进入
         /// </summary>
@@ -28,21 +35,23 @@ namespace FSM
         /// 状态退出
         /// </summary>
         public event Action<object[]> OnStateExit;
-        /// <summary>
-        /// 可以转换的状态和转换条件
-        /// </summary>
-        private Dictionary<StateName,Func<bool>> TransitionStateDict;
 
         #endregion
 
-        #region  Methods
+        #region State Methods
+
+        private void StateBaseEventBind()
+        {
+            OnStateEnter += objects => {stateRunning = true;};
+            OnStateExit += objects =>{stateRunning = false;};
+        }
 
         public State(StateName stateName)
         {
             this.stateName = stateName;
-            TransitionStateDict = new Dictionary<StateName, Func<bool>>();
+            transitionStateDict = new Dictionary<StateName, Func<bool>>();
+            StateBaseEventBind();
         }
-
 
         public StateName GetStateName()=>stateName;
         /// <summary>
@@ -52,13 +61,13 @@ namespace FSM
         /// <param name="condition">状态转换条件</param>
         public void RegisterTransitionState(StateName stateName,Func<bool> condition)
         {
-            if(!TransitionStateDict.ContainsKey(stateName))
+            if(!transitionStateDict.ContainsKey(stateName))
             {
-                TransitionStateDict.Add(stateName,condition);
+                transitionStateDict.Add(stateName,condition);
             }
             else
             {
-                TransitionStateDict[stateName] = condition;
+                transitionStateDict[stateName] = condition;
             }
         }
         /// <summary>
@@ -66,11 +75,11 @@ namespace FSM
         /// </summary>
         /// <param name="stateName">状态名字</param>
         /// <param name="condition">状态转换条件</param>
-        public void UnRegisterTransition(StateName stateName,Func<bool> condition)
+        public void UnRegisterTransition(StateName stateName)
         {
-            if(TransitionStateDict.ContainsKey(stateName))
+            if(transitionStateDict.ContainsKey(stateName))
             {
-                TransitionStateDict.Remove(stateName);
+                transitionStateDict.Remove(stateName);
             }
         }
         /// <summary>
@@ -91,7 +100,21 @@ namespace FSM
             FSMHelper.Instance.RemoveStateUpdateEvent(stateName);
             OnStateExit?.Invoke(exitParameters);
         }
-
+        /// <summary>
+        /// 检查当前可以转换的状态
+        /// </summary>
+        /// <returns></returns>
+        public StateName CheckCurrentStateTransition()
+        {
+            foreach(var state in transitionStateDict)
+            {
+                if(state.Value())
+                {
+                    return state.Key;
+                }
+            }
+            return StateName.None;
+        }
         #endregion
 
     }
